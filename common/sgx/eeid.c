@@ -478,8 +478,7 @@ static oe_result_t verify_base_image_signature(const sgx_sigstruct_t* sigstruct)
 #ifdef OE_BUILD_ENCLAVE
     mbedtls_pk_free(ikey);
 #else
-    // The OpenSSL flavour of oe_rsa_public_key_init does not copy the key,
-    // so oe_rsa_public_key_free already freed it.
+    EVP_PKEY_free(ikey);
 #endif
 
     result = OE_OK;

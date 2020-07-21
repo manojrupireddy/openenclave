@@ -297,9 +297,9 @@ oe_result_t oe_ec_generate_key_pair_from_private(
     if (EVP_PKEY_set1_EC_KEY(private_pkey, key) == 0)
         OE_RAISE(OE_CRYPTO_ERROR);
 
+    /* Initialize the EC public key (increments reference count)*/
     oe_ec_public_key_init(public_key, public_pkey);
     oe_ec_private_key_init(private_key, private_pkey);
-    public_pkey = NULL;
     private_pkey = NULL;
     result = OE_OK;
 
@@ -405,10 +405,9 @@ oe_result_t oe_ec_public_key_from_coordinates(
             ec = NULL;
         }
 
-        /* Initialize the public key */
+        /* Initialize the public key and increases the refcount of pkey by 1*/
         {
             oe_public_key_init(impl, pkey, OE_RSA_PUBLIC_KEY_MAGIC);
-            pkey = NULL;
         }
     }
 

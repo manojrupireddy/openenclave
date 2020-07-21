@@ -409,10 +409,10 @@ oe_result_t oe_rsa_get_public_key_from_private(
     if (EVP_PKEY_set1_RSA(rsa_public_pkey, rsa_public) == 0)
         OE_RAISE(OE_CRYPTO_ERROR);
 
+    /* Initialize the RSA public key (increments reference count)*/
     oe_rsa_public_key_init(public_key, rsa_public_pkey);
 
     result = OE_OK;
-    rsa_public_pkey = NULL;
 
 done:
     if (rsa_public_pkey)

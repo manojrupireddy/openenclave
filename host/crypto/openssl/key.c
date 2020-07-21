@@ -27,6 +27,8 @@ void oe_public_key_init(
     EVP_PKEY* pkey,
     uint64_t magic)
 {
+    if (pkey)
+        EVP_PKEY_up_ref(pkey);
     oe_public_key_t* impl = (oe_public_key_t*)public_key;
     impl->magic = magic;
     impl->pkey = pkey;

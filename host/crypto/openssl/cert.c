@@ -760,9 +760,8 @@ oe_result_t oe_cert_get_rsa_public_key(
     if (!(rsa = EVP_PKEY_get1_RSA(pkey)))
         OE_RAISE(OE_PUBLIC_KEY_NOT_FOUND);
 
-    /* Initialize the RSA public key */
+    /* Initialize the RSA public key (increments reference count) */
     oe_rsa_public_key_init(public_key, pkey);
-    pkey = NULL;
 
     result = OE_OK;
 
@@ -807,9 +806,8 @@ oe_result_t oe_cert_get_ec_public_key(
         EC_KEY_free(ec);
     }
 
-    /* Initialize the EC public key */
+    /* Initialize the EC public key (increments reference count)*/
     oe_ec_public_key_init(public_key, pkey);
-    pkey = NULL;
 
     result = OE_OK;
 
