@@ -80,6 +80,11 @@ unsigned int oe_sleep(unsigned int seconds);
 
 int oe_nanosleep(struct oe_timespec* req, struct oe_timespec* rem);
 
+int oe_clock_gettime(int clock_id, struct oe_timespec* cur_time);
+// int oe_gettimeofday(struct timeval* tv, struct timezone* tz);
+
+int oe_clock_gettime(int clock_id, struct oe_timespec* rem);
+
 int oe_flock(int fd, int operation);
 
 int oe_dup(int fd);

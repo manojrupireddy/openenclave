@@ -197,7 +197,6 @@ add_enclave_library(
   string.c
   strtok_r.c
   strtoul.c
-  time.c
   tracee.c
   wchar.c
   $<TARGET_OBJECTS:${DEFAULT_ALLOCATOR}>

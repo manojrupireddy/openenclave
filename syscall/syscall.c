@@ -844,6 +844,13 @@ static long _syscall(
             ret = (long)oe_nanosleep(req, rem);
             goto done;
         }
+        case OE_SYS_clock_gettime:
+        {
+            int clock_id = (int)arg1;
+            struct oe_timespec* cur_time = (struct oe_timespec*)arg2;
+            ret = (long)oe_clock_gettime(clock_id, cur_time);
+            goto done;
+        }
         default:
         {
             oe_errno = OE_ENOSYS;

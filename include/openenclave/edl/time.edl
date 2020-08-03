@@ -29,5 +29,10 @@ enclave
             [in] struct oe_timespec* req,
             [in, out] struct oe_timespec* rem)
             propagate_errno;
+
+        int oe_syscall_clock_gettime_ocall(
+            int clock_id,
+            [out] struct oe_timespec* cur_time)
+            propagate_errno;
     };
 };

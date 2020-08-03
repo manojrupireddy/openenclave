@@ -165,14 +165,8 @@ if (UNIX)
     crypto/openssl/sha.c
     linux/hostthread.c)
 
-  list(
-    APPEND
-    PLATFORM_SDK_ONLY_SRC
-    ../common/asn1.c
-    crypto/openssl/hmac.c
-    crypto/openssl/random.c
-    linux/syscall.c
-    linux/time.c)
+  list(APPEND PLATFORM_SDK_ONLY_SRC ../common/asn1.c crypto/openssl/hmac.c
+       crypto/openssl/random.c linux/syscall.c)
 elseif (WIN32)
   list(
     APPEND
@@ -205,8 +199,7 @@ elseif (WIN32)
     crypto/bcrypt/rsa.c
     crypto/bcrypt/sha.c
     windows/hostthread.c
-    windows/syscall.c
-    windows/time.c)
+    windows/syscall.c)
 else ()
   message(
     FATAL_ERROR "Unknown OS. The only supported OSes are Linux and Windows")
