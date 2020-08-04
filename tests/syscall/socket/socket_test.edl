@@ -6,6 +6,7 @@ enclave {
     from "openenclave/edl/fcntl.edl" import *;
     from "openenclave/edl/utsname.edl" import oe_syscall_uname_ocall;
     from "openenclave/edl/socket.edl" import *;
+    from "openenclave/edl/time.edl" import *;
 #ifdef OE_SGX
     from "openenclave/edl/sgx/platform.edl" import *;
 #else

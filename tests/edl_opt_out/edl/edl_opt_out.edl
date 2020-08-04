@@ -11,6 +11,7 @@ enclave {
         oe_syscall_lseek_ocall,
         oe_syscall_dup_ocall,
         oe_syscall_flock_ocall;
+    from "openenclave/edl/time.edl" import *;
 #ifdef OE_SGX
     from "openenclave/edl/sgx/cpu.edl" import *;
 #else

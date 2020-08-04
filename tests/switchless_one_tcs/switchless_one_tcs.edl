@@ -9,6 +9,7 @@ enclave {
     from "openenclave/edl/sgx/debug.edl" import *;
     from "openenclave/edl/sgx/thread.edl" import *;
     from "openenclave/edl/sgx/switchless.edl" import *;
+    from "openenclave/edl/time.edl" import *;
 
     enum num_tcs_t {
         NUM_TCS = 1
