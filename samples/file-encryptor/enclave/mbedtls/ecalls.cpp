@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 #include <openenclave/enclave.h>
-#include "../shared.h"
+#include "../../shared.h"
 #include "encryptor.h"
 #include "fileencryptor_t.h"
 
