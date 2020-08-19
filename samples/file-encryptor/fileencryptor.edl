@@ -12,6 +12,13 @@ enclave {
                                         [in, count=password_len] const char* password, 
                                         size_t password_len, 
                                         [in, out] encryption_header_t *header); 
+        
+        public int encrypt_block(bool encrypt, 
+                                        [in, count=size] unsigned char* input_buf, 
+                                        [out, count=size] unsigned char* output_buf, 
+                                        size_t size);
+
+        public void close_encryptor();
     };
 
     //untrusted {

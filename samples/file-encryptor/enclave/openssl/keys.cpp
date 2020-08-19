@@ -1,6 +1,8 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <openssl/rand.h>
+#include <string.h>
 #include "common.h"
 #include "encryptor.h"
 
@@ -27,10 +29,29 @@ int ecall_dispatcher::Sha256(
     size_t data_size,
     uint8_t sha256[32])
 {
-    return 0;
+    int ret = -1;
+    unsigned int sha_length_in_bytes = 32;
+    EVP_MD_CTX *mdctx;
+
+	if((mdctx = EVP_MD_CTX_new()) == NULL)
+		ret = -1;
+
+	if(1 != EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL))
+		ret = -1;
+
+	if(1 != EVP_DigestUpdate(mdctx, data, data_size))
+		ret = -1;
+
+	if(1 != EVP_DigestFinal_ex(mdctx, sha256, &sha_length_in_bytes))
+		ret = -1;
+
+    ret = 0;
+	EVP_MD_CTX_free(mdctx);
+exit:
+    return ret;
 }
 
-// This routine uses the mbed_tls library to derive an AES key from the input
+// This routine uses the openssl library to derive an AES key from the input
 // password and produce a password based key. Note : A set of hardcoded salt
 // values are used here for the purpose simplifying this sample, which caused
 // this routine to return the same key when taking the same password. This saves
@@ -41,7 +62,33 @@ int ecall_dispatcher::generate_password_key(
     unsigned char* key,
     unsigned int key_len)
 {
-    return 0;
+    int ret = 0;
+    unsigned char salt[SALT_SIZE_IN_BYTES] = {0xb2,
+                                              0x4b,
+                                              0xf2,
+                                              0xf7,
+                                              0x7a,
+                                              0xc5,
+                                              0xec,
+                                              0x0c,
+                                              0x5e,
+                                              0x1f,
+                                              0x4d,
+                                              0xc1,
+                                              0xae,
+                                              0x46,
+                                              0x5e,
+                                              0x75};
+     if(PKCS5_PBKDF2_HMAC((const char*)password,
+                            strlen((const char*)password),
+                            salt, SALT_SIZE_IN_BYTES, 100000,
+                            EVP_sha256(), key_len, key) == 0)
+    {
+        ret = -1;
+        goto exit;
+    }
+exit:
+    return ret;
 }
 
 // Generate an encryption key: this is the key used to encrypt data
@@ -49,7 +96,20 @@ int ecall_dispatcher::generate_encryption_key(
     unsigned char* key,
     unsigned int key_len)
 {
-    return 0;
+    TRACE_ENCLAVE("generating encryption key");
+    int ret = 0;
+    memset(key, 0, key_len);
+    if (!RAND_bytes(key, key_len))
+    {
+        ret = -1;
+        goto exit;
+    }
+    TRACE_ENCLAVE("encryption_key");
+    for (unsigned int i = 0; i < key_len; i++)
+        TRACE_ENCLAVE(
+            "encryption_key[%d] =0x%02x", i, (unsigned int)(key[i]));
+exit:
+    return ret;
 }
 
 // The encryption key is encrypted before it was written back to the encryption
@@ -62,9 +122,59 @@ int ecall_dispatcher::cipher_encryption_key(
     unsigned int input_data_size,
     unsigned char* encrypt_key,
     unsigned char* output_data,
-    unsigned int output_data_size)
+    int output_data_size)
 {
-    return 0;
+    int ret = 0;
+    int last_cipher_block_length = 0;
+    unsigned char iv[IV_SIZE] = {0xb2,
+                                 0x4b,
+                                 0xf2,
+                                 0xf7,
+                                 0x7a,
+                                 0xc5,
+                                 0xec,
+                                 0x0c,
+                                 0x5e,
+                                 0x1f,
+                                 0x4d,
+                                 0xc1,
+                                 0xae,
+                                 0x46,
+                                 0x5e,
+                                 0x75};
+
+    TRACE_ENCLAVE(
+        "cipher_encryption_key: %s", encrypt ? "encrypting" : "decrypting");
+    
+    EVP_CIPHER_CTX *ctx;
+
+     /* Create and initialise the context */
+    if(!(ctx = EVP_CIPHER_CTX_new()))
+        ret = -1;
+    
+    if(encrypt)
+    {
+        if(1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, encrypt_key, iv))
+            ret = -1;
+        if(1 != EVP_EncryptUpdate(ctx, output_data, &output_data_size, input_data, input_data_size))
+            ret = -1;
+        if(1 != EVP_EncryptFinal_ex(ctx, output_data + output_data_size, &last_cipher_block_length))
+            ret = -1;
+        output_data_size += last_cipher_block_length; 
+    }
+    else
+    {
+        if(1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, encrypt_key, iv))
+            ret = -1;
+        if(1 != EVP_DecryptUpdate(ctx, output_data, &output_data_size, input_data, input_data_size))
+            ret = -1;
+        if(1 != EVP_DecryptFinal_ex(ctx, output_data + output_data_size, &last_cipher_block_length))
+            ret = -1;
+        output_data_size += last_cipher_block_length; 
+    }
+exit:
+    EVP_CIPHER_CTX_free(ctx);
+    return ret;
 }
 
 // For an encryption operation, the encryptor creates encryption metadata for
@@ -82,7 +192,66 @@ int ecall_dispatcher::prepare_encryption_header(
     encryption_header_t* header,
     string password)
 {
-    return 0;
+    int ret = 0;
+    unsigned char digest[HASH_VALUE_SIZE_IN_BYTES]; // password derived key
+    unsigned char
+        password_key[ENCRYPTION_KEY_SIZE_IN_BYTES]; // encrypted encryption key
+    unsigned char encrypted_key[ENCRYPTION_KEY_SIZE_IN_BYTES];
+
+    TRACE_ENCLAVE("prepare_encryption_header");
+    // derive a key from the password using PBDKF2
+    ret = generate_password_key(
+        password.c_str(), password_key, ENCRYPTION_KEY_SIZE_IN_BYTES);
+    if (ret != 0)
+    {
+        TRACE_ENCLAVE("password_key");
+        for (unsigned int i = 0; i < ENCRYPTION_KEY_SIZE_IN_BYTES; i++)
+            TRACE_ENCLAVE(
+                "password_key[%d] =0x%02x", i, (unsigned int)(password_key[i]));
+        goto exit;
+    }
+
+    // produce a encryption key
+    ret = generate_encryption_key(
+        (unsigned char*)m_encryption_key, ENCRYPTION_KEY_SIZE_IN_BYTES);
+    if (ret != 0)
+    {
+        TRACE_ENCLAVE("Enclave: m_encryption_key");
+        for (unsigned int i = 0; i < ENCRYPTION_KEY_SIZE_IN_BYTES; i++)
+            TRACE_ENCLAVE(
+                "m_encryption_key[%d] =0x%02x", i, m_encryption_key[i]);
+        goto exit;
+    }
+
+    // generate a digest for the password
+    TRACE_ENCLAVE("generate a digest for the password");
+    ret = Sha256((const uint8_t*)password.c_str(), password.length(), digest);
+    if (ret)
+    {
+        TRACE_ENCLAVE("Sha256 failed with %d", ret);
+        goto exit;
+    }
+    memcpy(header->digest, digest, ENCRYPTION_KEY_SIZE_IN_BYTES);
+
+    // encrypt the encryption key with a password key
+    TRACE_ENCLAVE("encrypt the encryption key with a psswd key");
+    ret = cipher_encryption_key(
+        ENCRYPT_OPERATION,
+        m_encryption_key,
+        ENCRYPTION_KEY_SIZE_IN_BYTES,
+        password_key,
+        encrypted_key,
+        ENCRYPTION_KEY_SIZE_IN_BYTES);
+    if (ret != 0)
+    {
+        TRACE_ENCLAVE("EncryptEncryptionKey failed with [%d]", ret);
+        goto exit;
+    }
+    memcpy(header->encrypted_key, encrypted_key, ENCRYPTION_KEY_SIZE_IN_BYTES);
+    TRACE_ENCLAVE("Done with prepare_encryption_header successfully. %d", ret);
+exit:
+    TRACE_ENCLAVE("Done with prepare_encryption_header successfully. %d", ret);
+    return ret;
 }
 
 // Parse an input header for validating the password and getting the encryption
@@ -94,7 +263,52 @@ int ecall_dispatcher::parse_encryption_header(
     encryption_header_t* header,
     string password)
 {
-    return 0;
+    int ret = 0;
+    unsigned char digest[HASH_VALUE_SIZE_IN_BYTES];
+    unsigned char password_key[ENCRYPTION_KEY_SIZE_IN_BYTES];
+
+    // check password by comparing their digests
+    ret =
+        Sha256((const uint8_t*)m_password.c_str(), m_password.length(), digest);
+    if (ret)
+    {
+        TRACE_ENCLAVE("Sha256 failed with %d", ret);
+        goto exit;
+    }
+
+    if (memcmp(header->digest, digest, HASH_VALUE_SIZE_IN_BYTES) != 0)
+    {
+        TRACE_ENCLAVE("incorrect password");
+        ret = 1;
+        goto exit;
+    }
+
+    // derive a key from the password using PBDKF2
+    ret = generate_password_key(
+        password.c_str(), password_key, ENCRYPTION_KEY_SIZE_IN_BYTES);
+    if (ret != 0)
+    {
+        TRACE_ENCLAVE("generate_password_key failed with %d", ret);
+        goto exit;
+    }
+    // decrypt the "encrypted encryption key" using the password key
+    ret = cipher_encryption_key(
+        DECRYPT_OPERATION,
+        header->encrypted_key,
+        ENCRYPTION_KEY_SIZE_IN_BYTES,
+        password_key,
+        (unsigned char*)m_encryption_key,
+        ENCRYPTION_KEY_SIZE_IN_BYTES);
+    if (ret != 0)
+    {
+        TRACE_ENCLAVE("Enclave: m_encryption_key");
+        for (unsigned int i = 0; i < ENCRYPTION_KEY_SIZE_IN_BYTES; i++)
+            TRACE_ENCLAVE(
+                "m_encryption_key[%d] =0x%02x", i, m_encryption_key[i]);
+        goto exit;
+    }
+exit:
+    return ret;
 }
 
 int ecall_dispatcher::process_encryption_header(
@@ -103,5 +317,43 @@ int ecall_dispatcher::process_encryption_header(
     size_t password_len,
     encryption_header_t* header)
 {
-    return 0;
+    int ret = 0;
+
+    m_password = std::string(password, password + password_len);
+    m_encrypt = encrypt;
+    m_header = header;
+
+    if (m_encrypt)
+    {
+        // allocate host memory for the header and it will be returned back to
+        // the host
+        m_header =
+            (encryption_header_t*)oe_host_malloc(sizeof(encryption_header_t));
+        if (m_header == NULL)
+        {
+            ret = 1;
+            goto exit;
+        }
+
+        TRACE_ENCLAVE("prepare_encryption_header call");
+        ret = prepare_encryption_header(m_header, m_password);
+        if (ret != 0)
+        {
+            TRACE_ENCLAVE("prepare_encryption_header failed with %d", ret);
+            goto exit;
+        }
+        TRACE_ENCLAVE("MAN:: copy start");
+        memcpy(header, m_header, sizeof(encryption_header_t));
+    }
+    else
+    {
+        ret = parse_encryption_header(m_header, m_password);
+        if (ret != 0)
+        {
+            TRACE_ENCLAVE("parse_encryption_header failed with %d", ret);
+            goto exit;
+        }
+    }
+exit:
+    return ret;  
 }

@@ -4,6 +4,7 @@
 #include <openenclave/enclave.h>
 #include "../../shared.h"
 #include "encryptor.h"
+#include "common.h"
 #include "fileencryptor_t.h"
 
 // Declare a static dispatcher object for enabling for better organization
@@ -17,4 +18,18 @@ int initialize_encryptor(
     encryption_header_t* header)
 {
     return dispatcher.initialize(encrypt, password, password_len, header);
+}
+
+int encrypt_block(
+    bool encrypt,
+    unsigned char* input_buf,
+    unsigned char* output_buf,
+    size_t size)
+{
+    return dispatcher.encrypt_block(encrypt, input_buf, output_buf, size);
+}
+
+void close_encryptor()
+{
+    return dispatcher.close();
 }

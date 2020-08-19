@@ -5,6 +5,7 @@
 
 
 #include <openssl/evp.h>
+#include <openssl/engine.h>
 #include <openenclave/enclave.h>
 #include <string>
 #include "../../shared.h"
@@ -16,10 +17,11 @@ using namespace std;
 class ecall_dispatcher
 {
   private:
-    EVP_CIPHER_CTX *m_encrypt_cipher_ctx;
-    EVP_CIPHER_CTX *m_decrypt_cipher_ctx;
+    EVP_CIPHER_CTX *m_encryption_cipher_ctx;
+    EVP_CIPHER_CTX *m_decryption_cipher_ctx;
     bool m_encrypt;
     string m_password;
+    ENGINE* m_eng;
 
     encryption_header_t* m_header;
 
@@ -37,6 +39,12 @@ class ecall_dispatcher
         const char* password,
         size_t password_len,
         encryption_header_t* header);
+    int encrypt_block(
+        bool encrypt,
+        unsigned char* input_buf,
+        unsigned char* output_buf,
+        size_t size);
+    void close();
 
   private:
     int generate_password_key(
@@ -52,7 +60,7 @@ class ecall_dispatcher
         unsigned int input_data_size,
         unsigned char* encrypt_key,
         unsigned char* output_data,
-        unsigned int output_data_size);
+        int output_data_size);
     int Sha256(const uint8_t* data, size_t data_size, uint8_t sha256[32]);
     void dump_data(const char* name, unsigned char* data, size_t data_size);
     int process_encryption_header(

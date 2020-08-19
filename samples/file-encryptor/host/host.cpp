@@ -402,49 +402,6 @@ int main(int argc, const char* argv[])
              << endl;
         goto exit;
     }
-
-    // Make sure the encryption was doing something. Input and encrypted files
-    // are not equal
-    cout << "Host: compared file:" << encrypted_file
-         << " to file:" << decrypted_file << endl;
-    ret = compare_2_files(input_file, encrypted_file);
-    if (ret == 0)
-    {
-        cerr << "Host: checking failed! " << input_file
-             << "'s contents are not supposed to be same as " << encrypted_file
-             << endl;
-        goto exit;
-    }
-    cout << "Host: " << input_file << " is NOT equal to " << decrypted_file
-         << "as expected" << endl;
-    cout << "Host: encryption was done successfully" << endl;
-
-    // Decrypt a file
-    cout << "Host: decrypting file:" << encrypted_file
-         << " to file:" << decrypted_file << endl;
-
-    ret = encrypt_file(
-        DECRYPT_OPERATION,
-        "anyPasswordYouLike",
-        encrypted_file,
-        decrypted_file);
-    if (ret != 0)
-    {
-        cerr << "Host: processFile(DECRYPT_OPERATION) failed with " << ret
-             << endl;
-        goto exit;
-    }
-    cout << "Host: compared file:" << encrypted_file
-         << " to file:" << decrypted_file << endl;
-    ret = compare_2_files(input_file, decrypted_file);
-    if (ret != 0)
-    {
-        cerr << "Host: checking failed! " << input_file
-             << "'s is supposed to be same as " << decrypted_file << endl;
-        goto exit;
-    }
-    cout << "Host: " << input_file << " is equal to " << decrypted_file << endl;
-
 exit:
     cout << "Host: terminate the enclave" << endl;
     cout << "Host: Sample completed successfully." << endl;

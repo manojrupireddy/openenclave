@@ -40,21 +40,94 @@ int ecall_dispatcher::initialize(
     m_encrypt = encrypt;
     memset((void*)m_encryption_key, 0, ENCRYPTION_KEY_SIZE_IN_BYTES);
 
+    int data = 0;
+    
+
+    /* Initialize and opt-in the RDRAND engine. */
+    ENGINE_load_rdrand();
+    m_eng = ENGINE_by_id("rdrand");
+    if (m_eng == NULL)
+    {
+        goto exit;
+    }
+
+    if (!ENGINE_init(m_eng))
+    {
+        goto exit;
+    }
+
+    if (!ENGINE_set_default(m_eng, ENGINE_METHOD_RAND))
+    {
+        goto exit;
+    }
+
     ret = process_encryption_header(encrypt, password, password_len, header);
+    TRACE_ENCLAVE("MAN:: initialization of header done");
     if (ret != 0)
     {
         TRACE_ENCLAVE("process_encryption_header failed with %d", ret);
         goto exit;
     }
 
-
-    if (ret != 0)
-    {
-        TRACE_ENCLAVE("mbedtls_aes_setkey_dec failed with %d", ret);
-        goto exit;
-    }
+    TRACE_ENCLAVE("MAN:: Encryption header processed");
+    if(!(m_encryption_cipher_ctx = EVP_CIPHER_CTX_new()))
+        ret = -1;
+    if(1 != EVP_EncryptInit_ex(m_encryption_cipher_ctx, EVP_aes_256_cbc(), NULL,m_encryption_key , m_operating_iv))
+        ret = -1;
+    
+    if(!(m_decryption_cipher_ctx = EVP_CIPHER_CTX_new()))
+        ret = -1;
+    if(1 != EVP_DecryptInit_ex(m_decryption_cipher_ctx, EVP_aes_256_cbc(), NULL,m_encryption_key , m_operating_iv))
+        ret = -1;
+    
     // init iv
     memcpy(m_operating_iv, m_original_iv, IV_SIZE);
 exit:
     return ret;
+}
+
+int ecall_dispatcher::encrypt_block(
+    bool encrypt,
+    unsigned char* input_buf,
+    unsigned char* output_buf,
+    size_t input_size)
+{
+    int ret = 0;
+    int output_data_size = 0;
+    int last_cipher_block_length = 0;
+    
+    if(m_encrypt)
+    {
+        if(1 != EVP_EncryptUpdate(m_encryption_cipher_ctx, output_buf, &output_data_size, input_buf, input_size))
+            ret = -1;
+        if(1 != EVP_EncryptFinal_ex(m_encryption_cipher_ctx, output_buf + output_data_size, &last_cipher_block_length))
+            ret = -1;
+        output_data_size += last_cipher_block_length; 
+    }
+    else
+    {
+        
+        if(1 != EVP_DecryptUpdate(m_decryption_cipher_ctx, output_buf, &output_data_size, input_buf, input_size))
+            ret = -1;
+        if(1 != EVP_DecryptFinal_ex(m_decryption_cipher_ctx, output_buf + output_data_size, &last_cipher_block_length))
+            ret = -1;
+        output_data_size += last_cipher_block_length; 
+    }
+exit:
+    return ret;
+}
+
+void ecall_dispatcher::close()
+{
+    ENGINE_finish(m_eng);
+    ENGINE_free(m_eng);
+    ENGINE_cleanup();
+    if (m_encrypt)
+    {
+        oe_host_free(m_header);
+        m_header = NULL;
+    }
+    EVP_CIPHER_CTX_free(m_encryption_cipher_ctx);
+    EVP_CIPHER_CTX_free(m_decryption_cipher_ctx);
+    TRACE_ENCLAVE("ecall_dispatcher::close");
 }

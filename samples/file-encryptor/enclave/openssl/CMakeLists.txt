@@ -23,7 +23,8 @@ target_compile_definitions(enclave PUBLIC OE_API_VERSION=2)
 target_include_directories(
   enclave
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} # Needed for #include "../shared.h"
-          ${CMAKE_CURRENT_BINARY_DIR})
+          ${CMAKE_CURRENT_BINARY_DIR}
+          ${CMAKE_BINARY_DIR}/3rdparty/openssl/build/include)
 
-target_link_libraries(enclave openenclave::oeenclave openenclave::oelibcxx)
+target_link_libraries(enclave openenclave::oeenclave openenclave::openssl openenclave::oelibcxx)
 
