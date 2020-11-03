@@ -14,11 +14,11 @@ add_enclave(
   TARGET
   tls_server_enc
   CRYPTO_LIB
-  mbedtls
+  openssl
   SOURCES
-  server.cpp
+  openssl_server.cpp
   ../common/utility.cpp
-  ../common/mbedtls_utility.cpp
+  ../common/openssl_utility.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/tls_e2e_t.c)
 
 set_source_files_properties(tls_e2e_t.c PROPERTIES COMPILE_FLAGS

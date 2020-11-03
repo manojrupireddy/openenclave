@@ -19,6 +19,7 @@ oe_result_t generate_certificate_and_pkey(X509*& cert, EVP_PKEY*& pkey)
     uint8_t* public_key_buf = NULL;
     size_t public_key_buf_size = 0;
     const unsigned char* cert_buf_ptr = NULL;
+    BIO *mem = NULL;
 
     result = generate_key_pair(
         &public_key_buf,
@@ -52,9 +53,8 @@ oe_result_t generate_certificate_and_pkey(X509*& cert, EVP_PKEY*& pkey)
             "Failed to convert DER fromat certificate to X509 structure\n");
         goto done;
     }
-
-    if ((pkey = PEM_read_bio_PrivateKey(
-             BIO_new_mem_buf((void*)private_key_buf, -1), NULL, 0, NULL)) ==
+    mem = BIO_new_mem_buf((void*)private_key_buf, -1);
+    if ((pkey = PEM_read_bio_PrivateKey(mem, NULL, 0, NULL)) ==
         NULL)
     {
         OE_TRACE_ERROR(
@@ -66,6 +66,7 @@ oe_result_t generate_certificate_and_pkey(X509*& cert, EVP_PKEY*& pkey)
     result = OE_OK;
 done:
     cert_buf_ptr = NULL;
+    BIO_free(mem);
     oe_free_key(private_key_buf, private_key_buf_size, NULL, 0);
     oe_free_key(public_key_buf, public_key_buf_size, NULL, 0);
     oe_free_attestation_certificate(output_cert);
@@ -80,13 +81,20 @@ done:
 int cert_verify_callback(int preverify_ok, X509_STORE_CTX* ctx)
 {
     int ret = 0;
-    int der_len = 0;
+    size_t der_len = 0;
     unsigned char* der = nullptr;
     unsigned char* buff = nullptr;
     oe_result_t result = OE_FAILURE;
     X509* crt = nullptr;
     int err = X509_V_ERR_UNSPECIFIED;
 
+    if (g_control_config.fail_cert_verify_callback)
+    {
+        OE_TRACE_INFO(
+            "Purposely returns failure from server's cert_verify_callback()\n");
+        goto done;
+    }
+    
     printf(
         TLS_SERVER "verify_callback called with preverify_ok=%d\n",
         preverify_ok);
@@ -111,7 +119,7 @@ int cert_verify_callback(int preverify_ok, X509_STORE_CTX* ctx)
     }
 
     // convert a cert into a buffer in DER format
-    der_len = i2d_X509(crt, nullptr);
+    der_len = (size_t)i2d_X509(crt, nullptr);
     buff = (unsigned char*)malloc(der_len);
     if (buff == nullptr)
     {
@@ -119,7 +127,7 @@ int cert_verify_callback(int preverify_ok, X509_STORE_CTX* ctx)
         goto done;
     }
     der = buff;
-    der_len = i2d_X509(crt, &buff);
+    der_len = (size_t)i2d_X509(crt, &buff);
     if (der_len < 0)
     {
         printf(TLS_SERVER "i2d_X509 failed(der_len=%d)\n", der_len);
@@ -164,7 +172,7 @@ int read_from_session_peer(
     {
         int len = sizeof(buf) - 1;
         memset(buf, 0, sizeof(buf));
-        bytes_read = SSL_read(ssl_session, buf, (size_t)len);
+        bytes_read = SSL_read(ssl_session, buf, len);
 
         if (bytes_read <= 0)
         {
@@ -180,8 +188,8 @@ int read_from_session_peer(
         printf(" %d bytes read from session peer\n", bytes_read);
 
         // check to see if received payload is expected
-        if ((bytes_read != payload_length) ||
-            (memcmp(payload, buf, bytes_read) != 0))
+        if ((bytes_read != (int)payload_length) ||
+            (memcmp(payload, buf, (size_t)bytes_read) != 0))
         {
             printf(
                 "ERROR: expected reading %lu bytes but only "
@@ -213,7 +221,7 @@ int write_to_session_peer(
     int bytes_written = 0;
     int ret = 0;
 
-    while ((bytes_written = SSL_write(ssl_session, payload, payload_length)) <=
+    while ((bytes_written = SSL_write(ssl_session, payload, (int)payload_length)) <=
            0)
     {
         int error = SSL_get_error(ssl_session, bytes_written);
@@ -225,6 +233,7 @@ int write_to_session_peer(
     }
 
     printf("%lu bytes written to session peer \n\n", payload_length);
+    printf("************************************************\n");
 exit:
     return ret;
 }

@@ -163,11 +163,13 @@ void run_server(void* arg)
         config->args.fail_enclave_identity_verifier_callback ||
         config->args.fail_oe_verify_attestation_certificate)
     {
+        printf("\n output of g_server_thread_exit_code %d \n", g_server_thread_exit_code);
         OE_TEST(g_server_thread_exit_code == FATAL_TLS_HANDSHAKE_ERROR);
         g_server_thread_exit_code = 0;
+        printf("\n ^^^^^^^^^^^^^^^ resetting done %d ^^^^^^^^^^^^^^^^^^^^^^", g_server_thread_exit_code);
     }
 
-    OE_TRACE_INFO("Leaving server thread...\n");
+    printf("Leaving server thread...\n");
 
 // Label needed for OE_CHECK* macros
 done:
@@ -243,10 +245,11 @@ done:
 
 int run_test_with_config(tls_test_configs_t* test_configs)
 {
+    printf(" *************** creating a server thread \n");
     // create server thread
     g_server_thread = std::thread(run_server, (void*)test_configs);
 
-    OE_TRACE_INFO("wait until TLS server is ready to accept client request\n");
+    printf(" ********************* wait until TLS server is ready to accept client request\n");
 
     {
         // Release lock on scope exit
@@ -255,8 +258,8 @@ int run_test_with_config(tls_test_configs_t* test_configs)
             server_lock, [] { return g_server_initialization_done; });
         if (!g_server_initialization_success)
         {
-            OE_TRACE_ERROR(
-                "Server initialization failed. Server exit code is %d\n",
+            printf(
+                "%%%%%%%%%%%%%%%% this should not happen Server initialization failed. Server exit code is %d\n",
                 g_server_thread_exit_code);
             return g_server_thread_exit_code;
         }
@@ -267,8 +270,8 @@ int run_test_with_config(tls_test_configs_t* test_configs)
     // create client thread
     std::thread client_thread(run_client, (void*)test_configs);
     client_thread.join();
-    OE_TRACE_INFO(
-        "Client thread terminated with ret =%d... \n",
+    printf(
+        "============================================= Client thread terminated with ret =%d... \n",
         g_client_thread_exit_code);
 
     return g_client_thread_exit_code;

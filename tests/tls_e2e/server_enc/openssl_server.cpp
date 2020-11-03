@@ -17,7 +17,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-//#include <openssl/engine.h>
+#include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
 // clang-format on
@@ -72,7 +72,7 @@ exit:
     return ret;
 }
 
-/*int init_openssl_rand_engine(ENGINE*& eng)
+int init_openssl_rand_engine(ENGINE*& eng)
 {
     int ret = -1;
     ENGINE_load_rdrand();
@@ -96,20 +96,19 @@ exit:
 exit:
     return ret;
 }
-*/
+
 
 void init_openssl_library()
 {
     OpenSSL_add_ssl_algorithms();
     SSL_load_error_strings();
-    // ERR_load_crypto_strings();
+    ERR_load_crypto_strings();
     SSL_load_error_strings();
 }
 
 int initalize_ssl_context(SSL_CTX*& ctx)
 {
     int ret = -1;
-    const SSL_METHOD* method;
     if ((ctx = SSL_CTX_new(SSLv23_server_method())) == NULL)
     {
         printf(TLS_SERVER " unable to create a new SSL context\n");
@@ -158,7 +157,7 @@ exit:
     return ret;
 }
 
-int create_listener_socket(int port, int& server_socket)
+int create_listener_socket(uint16_t port, int& server_socket)
 {
     int ret = -1;
     struct sockaddr_in addr;
@@ -205,6 +204,7 @@ waiting_for_connection_request:
     close(client_socket_fd);
     SSL_free(ssl_session);
     printf(" waiting for client connection \n");
+    
 
     struct sockaddr_in addr;
     uint len = sizeof(addr);
@@ -230,9 +230,12 @@ waiting_for_connection_request:
     if (SSL_accept(ssl_session) <= 0)
     {
         printf(" SSL handshake failed \n");
-        // ERR_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
+        ret = -0x3000;
         goto exit;
     }
+
+    
 
     printf(TLS_SERVER "<---- Read from client:\n");
     if (read_from_session_peer(
@@ -250,25 +253,27 @@ waiting_for_connection_request:
         printf(" Write to client failed \n");
         goto exit;
     }
-
+    printf(" writing completed \n");
     if (keep_server_up)
         goto waiting_for_connection_request;
 
     ret = 0;
 exit:
+    printf(" making an exit \n");
     return ret;
 }
 
 int setup_tls_server(struct tls_control_args* config, char* server_port)
 {
+    OE_TRACE_INFO(" called setup tls server");
     int ret = -1;
     int server_ready_ret = 1;
 
-    int server_socket_fd;
-    int client_socket_fd;
-    int server_port_num;
+    int server_socket_fd = -1;
+    int client_socket_fd = -1;
+    uint16_t server_port_num = 0;
 
-    // ENGINE* eng = NULL;
+    ENGINE* eng = NULL;
     X509* cert = NULL;
     EVP_PKEY* pkey = NULL;
 
@@ -280,16 +285,16 @@ int setup_tls_server(struct tls_control_args* config, char* server_port)
     /* Load host resolver and socket interface modules explicitly*/
     if (load_oe_modules() != 0)
     {
-        printf(TLS_SERVER "loading required oe modules failed \n");
+        OE_TRACE_INFO(TLS_SERVER "loading required oe modules failed \n");
         goto exit;
     }
 
     /* Initialize openssl random engine as mentioned in */
-    /*if (init_openssl_rand_engine(eng) != 0)
+    if (init_openssl_rand_engine(eng) != 0)
     {
         printf(TLS_SERVER " initializing openssl random engine failed \n");
         goto exit;
-    }*/
+    }
 
     // initialize openssl library and register algorithms
     init_openssl_library();
@@ -333,26 +338,40 @@ int setup_tls_server(struct tls_control_args* config, char* server_port)
 
     ret = 0;
 exit:
+    printf(TLS_SERVER "making an exit here \n");
     if (ret != 0)
     {
+        printf("&&&&&&&&&&&&&&& server initialization failed &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& \n");
         int init_failed_ret;
         if (server_ready_ret != 0)
+        {
+            printf(" server initialization failed called &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& \n");
             server_initialization_failed(&init_failed_ret);
+        }
     }
-
-    /*ENGINE_finish(eng); // clean up openssl random engine resources
+    
+    ENGINE_finish(eng); // clean up openssl random engine resources
     ENGINE_free(eng);
-    ENGINE_cleanup();*/
-
+    ENGINE_cleanup();
+    
     close(client_socket_fd); // close the socket connections
     close(server_socket_fd);
 
-    SSL_shutdown(ssl_session); // close and free up the ssl session resources
-    SSL_free(ssl_session);
-
-    SSL_CTX_free(ssl_server_ctx); // free up the server context and certificates
-    X509_free(cert);
-    EVP_PKEY_free(pkey);
+    if(ssl_session)
+    {
+        SSL_shutdown(ssl_session);
+        SSL_free(ssl_session);
+    }
+    printf("111111111111111111111111111\n");
+    if(ssl_server_ctx)
+        SSL_CTX_free(ssl_server_ctx);
+    printf("222222222222222222222222222222\n");
+    if(cert)
+        X509_free(cert);
+    printf("3333333333333333333333333333333333\n");
+    if(pkey)
+        EVP_PKEY_free(pkey);
+    printf("444444444444444444444444444444444444\n");
     return (ret);
 }
 
