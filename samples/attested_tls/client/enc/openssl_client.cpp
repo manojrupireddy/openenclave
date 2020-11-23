@@ -4,7 +4,6 @@
 #include <errno.h>
 #include <openenclave/enclave.h>
 #include <openssl/bio.h>
-#include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
@@ -202,42 +201,17 @@ exit:
     return ret;
 }
 
-int init_openssl_rand_engine(ENGINE*& eng)
-{
-    int ret = -1;
-    ENGINE_load_rdrand();
-    eng = ENGINE_by_id("rdrand");
-    if (eng == NULL)
-    {
-        goto exit;
-    }
-
-    if (!ENGINE_init(eng))
-    {
-        goto exit;
-    }
-
-    if (!ENGINE_set_default(eng, ENGINE_METHOD_RAND))
-    {
-        goto exit;
-    }
-
-    ret = 0;
-exit:
-    return ret;
-}
-
 int launch_tls_client(char* server_name, char* server_port)
 {
     printf(TLS_CLIENT " called setup tls client \n");
 
     int ret = 0;
-    ENGINE* eng = nullptr;
-    X509* cert = nullptr;
-    EVP_PKEY* pkey = nullptr;
 
     SSL_CTX* ssl_client_ctx = nullptr;
     SSL* ssl_session = nullptr;
+
+    X509* cert = NULL;
+    EVP_PKEY* pkey = NULL;
 
     int client_socket = -1;
     int error = 0;
@@ -247,13 +221,6 @@ int launch_tls_client(char* server_name, char* server_port)
     if (load_oe_modules() != OE_OK)
     {
         printf(TLS_CLIENT "loading required oe modules failed \n");
-        goto done;
-    }
-
-    /* Initialize openssl random engine as mentioned in */
-    if (init_openssl_rand_engine(eng) != 0)
-    {
-        printf(TLS_CLIENT " initializing openssl random engine failed \n");
         goto done;
     }
 
@@ -321,10 +288,6 @@ int launch_tls_client(char* server_name, char* server_port)
     // Free the structures we don't need anymore
     ret = 0;
 done:
-
-    ENGINE_finish(eng); // clean up openssl random engine resources
-    ENGINE_free(eng);
-    ENGINE_cleanup();
 
     if (client_socket != -1)
         close(client_socket);

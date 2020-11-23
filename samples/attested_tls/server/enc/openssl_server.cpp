@@ -3,7 +3,6 @@
 
 #include <arpa/inet.h>
 #include <openenclave/enclave.h>
-#include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
 #include <stdlib.h>
@@ -18,31 +17,6 @@ extern "C"
 };
 
 int verify_callback(int preverify_ok, X509_STORE_CTX* ctx);
-
-int init_openssl_rand_engine(ENGINE*& eng)
-{
-    int ret = -1;
-    ENGINE_load_rdrand();
-    eng = ENGINE_by_id("rdrand");
-    if (eng == NULL)
-    {
-        goto exit;
-    }
-
-    if (!ENGINE_init(eng))
-    {
-        goto exit;
-    }
-
-    if (!ENGINE_set_default(eng, ENGINE_METHOD_RAND))
-    {
-        goto exit;
-    }
-
-    ret = 0;
-exit:
-    return ret;
-}
 
 int initalize_ssl_context(SSL_CTX*& ctx)
 {
@@ -135,7 +109,6 @@ waiting_for_connection_request:
     if (SSL_accept(ssl_session) <= 0)
     {
         printf(TLS_SERVER " SSL handshake failed \n");
-        ERR_print_errors_fp(stderr);
         goto exit;
     }
 
@@ -170,7 +143,6 @@ int setup_tls_server(char* server_port, bool keep_server_up)
     int client_socket_fd;
     int server_port_num;
 
-    ENGINE* eng = NULL;
     X509* cert = NULL;
     EVP_PKEY* pkey = NULL;
 
@@ -181,13 +153,6 @@ int setup_tls_server(char* server_port, bool keep_server_up)
     if (load_oe_modules() != OE_OK)
     {
         printf(TLS_SERVER "loading required oe modules failed \n");
-        goto exit;
-    }
-
-    /* Initialize openssl random engine as mentioned in*/
-    if (init_openssl_rand_engine(eng) != 0)
-    {
-        printf(TLS_SERVER " initializing openssl random engine failed \n");
         goto exit;
     }
 
@@ -227,10 +192,6 @@ int setup_tls_server(char* server_port, bool keep_server_up)
     }
 
 exit:
-    ENGINE_finish(eng); // clean up openssl random engine resources
-    ENGINE_free(eng);
-    ENGINE_cleanup();
-
     close(client_socket_fd); // close the socket connections
     close(server_socket_fd);
 
