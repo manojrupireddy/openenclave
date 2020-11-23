@@ -17,6 +17,8 @@ extern "C"
     int setup_tls_server(char* server_port, bool keep_server_up);
 };
 
+int verify_callback(int preverify_ok, X509_STORE_CTX* ctx);
+
 int init_openssl_rand_engine(ENGINE*& eng)
 {
     int ret = -1;
@@ -194,6 +196,8 @@ int setup_tls_server(char* server_port, bool keep_server_up)
         printf(TLS_SERVER " unable to create a new SSL context\n ");
         goto exit;
     }
+
+    SSL_CTX_set_verify(ssl_server_ctx, SSL_VERIFY_PEER, &verify_callback);
 
     if (load_ssl_certificates_and_keys(ssl_server_ctx, cert, pkey) != 0)
     {

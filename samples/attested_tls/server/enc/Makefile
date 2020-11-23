@@ -15,8 +15,8 @@ OBJ_FILES = ecalls.o mbedtls_server.o cert_verify_config.o cert_verifier.o ident
 ADDITIONAL_LDFLAGS = -lmbedtls -lmbedcrypto
 
 ifeq (${OE_CRYPTO_LIB}, openssl)
-	SRC_FILES = ecalls.cpp openssl_server.cpp cert_verify_config.cpp ../../common/utility.cpp ../../common/openssl_utility.cpp
-	OBJ_FILES = ecalls.o openssl_server.o cert_verify_config.o utility.o openssl_utility.o tls_server_t.o
+	SRC_FILES = ecalls.cpp openssl_server.cpp cert_verify_config.cpp ../../common/verify_callback.cpp ../../common/utility.cpp ../../common/openssl_utility.cpp
+	OBJ_FILES = ecalls.o openssl_server.o cert_verify_config.o verify_callback.o utility.o openssl_utility.o tls_server_t.o
 	ADDITIONAL_LDFLAGS = -lopensslssl -lopensslcrypto
 endif
 
