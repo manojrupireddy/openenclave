@@ -4,7 +4,6 @@
 #include <errno.h>
 #include <openenclave/enclave.h>
 #include <openssl/bio.h>
-#include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
@@ -90,8 +89,6 @@ int communicate_with_server(SSL* ssl)
             ret = 0;
             break;
         }
-        printf(TLS_CLIENT
-               "Verified: the contents of server payload were expected\n\n");
     } while (1);
     ret = 0;
 done:
@@ -104,7 +101,7 @@ int create_socket(char* server_name, char* server_port)
     int sockfd = -1;
     char* addr_ptr = nullptr;
     int port = 0;
-    struct addrinfo hints, *dest_info, *curr_di;
+    struct addrinfo hints, *dest_info = nullptr, *curr_di = nullptr;
     int res;
 
 #ifdef _WIN32
@@ -136,7 +133,6 @@ int create_socket(char* server_name, char* server_port)
         {
             break;
         }
-
         curr_di = curr_di->ai_next;
     }
 
@@ -154,11 +150,6 @@ int create_socket(char* server_name, char* server_port)
         printf(TLS_CLIENT "Error: Cannot create socket %d.\n", errno);
         goto done;
     }
-
-    struct sockaddr_in ipOfServer;
-    ipOfServer.sin_family = AF_INET;
-    ipOfServer.sin_port = htons(4334);
-    ipOfServer.sin_addr.s_addr = inet_addr("0.0.0.0");
 
     if (connect(
             sockfd,
@@ -186,42 +177,17 @@ done:
 int initalize_ssl_context(SSL_CTX*& ctx)
 {
     int ret = -1;
-    const SSL_METHOD* method;
-    if ((ctx = SSL_CTX_new(SSLv23_client_method())) == nullptr)
+    if ((ctx = SSL_CTX_new(TLS_client_method())) == nullptr)
     {
         printf(TLS_CLIENT "TLS client: unable to create a new SSL context\n");
         goto exit;
     }
-    // choose TLSv1.2 by excluding SSLv2, SSLv3 ,TLS 1.0 and TLS 1.1
+    // Exclude SSLv2, SSLv3, TLS 1.0, TLS 1.1 and TLS 1.2
     SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
     SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
     SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
     SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_1);
-    ret = 0;
-exit:
-    return ret;
-}
-
-int init_openssl_rand_engine(ENGINE*& eng)
-{
-    int ret = -1;
-    ENGINE_load_rdrand();
-    eng = ENGINE_by_id("rdrand");
-    if (eng == NULL)
-    {
-        goto exit;
-    }
-
-    if (!ENGINE_init(eng))
-    {
-        goto exit;
-    }
-
-    if (!ENGINE_set_default(eng, ENGINE_METHOD_RAND))
-    {
-        goto exit;
-    }
-
+    SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_2);
     ret = 0;
 exit:
     return ret;
@@ -229,31 +195,24 @@ exit:
 
 int launch_tls_client(char* server_name, char* server_port)
 {
-    printf(TLS_CLIENT " called setup tls client \n");
+    printf(TLS_CLIENT " called launch tls client\n");
 
     int ret = 0;
-    ENGINE* eng = nullptr;
-    X509* cert = nullptr;
-    EVP_PKEY* pkey = nullptr;
 
     SSL_CTX* ssl_client_ctx = nullptr;
     SSL* ssl_session = nullptr;
+
+    X509* cert = nullptr;
+    EVP_PKEY* pkey = nullptr;
 
     int client_socket = -1;
     int error = 0;
     oe_result_t result = OE_FAILURE;
 
-    /* Load host resolver and socket interface modules explicitly*/
+    /* Load host resolver and socket interface modules explicitly */
     if (load_oe_modules() != OE_OK)
     {
-        printf(TLS_CLIENT "loading required oe modules failed \n");
-        goto done;
-    }
-
-    /* Initialize openssl random engine as mentioned in */
-    if (init_openssl_rand_engine(eng) != 0)
-    {
-        printf(TLS_CLIENT " initializing openssl random engine failed \n");
+        printf(TLS_CLIENT "loading required Open Enclave modules failed\n");
         goto done;
     }
 
@@ -268,10 +227,10 @@ int launch_tls_client(char* server_name, char* server_port)
     // specify the verify_callback for custom verification
     SSL_CTX_set_verify(ssl_client_ctx, SSL_VERIFY_PEER, &verify_callback);
 
-    if (load_ssl_certificates_and_keys(ssl_client_ctx, cert, pkey) != 0)
+    if (load_tls_certificates_and_keys(ssl_client_ctx, cert, pkey) != 0)
     {
         printf(TLS_CLIENT
-               " unable to load certificate and private key on the server\n ");
+               " unable to load certificate and private key on the server\n");
         goto done;
     }
 
@@ -281,13 +240,14 @@ int launch_tls_client(char* server_name, char* server_port)
                "Unable to create a new SSL connection state object\n");
         goto done;
     }
-    printf(TLS_CLIENT "new ssl conntection getting created \n");
+
+    printf(TLS_CLIENT "new ssl connection getting created\n");
     client_socket = create_socket(server_name, server_port);
     if (client_socket == -1)
     {
         printf(
             TLS_CLIENT
-            "create a socket and initate a TCP connect to server: %s:%s "
+            "create a socket and initiate a TCP connect to server: %s:%s "
             "(errno=%d)\n",
             server_name,
             server_port,
@@ -295,13 +255,13 @@ int launch_tls_client(char* server_name, char* server_port)
         goto done;
     }
 
-    // setup ssl socket and initiate TLS connection with TLS server
+    // set up ssl socket and initiate TLS connection with TLS server
     SSL_set_fd(ssl_session, client_socket);
 
     if ((error = SSL_connect(ssl_session)) != 1)
     {
         printf(
-            TLS_CLIENT "Error: Could not establish an SSL session ret2=%d "
+            TLS_CLIENT "Error: Could not establish a TLS session ret2=%d "
                        "SSL_get_error()=%d\n",
             error,
             SSL_get_error(ssl_session, error));
@@ -321,10 +281,6 @@ int launch_tls_client(char* server_name, char* server_port)
     // Free the structures we don't need anymore
     ret = 0;
 done:
-
-    ENGINE_finish(eng); // clean up openssl random engine resources
-    ENGINE_free(eng);
-    ENGINE_cleanup();
 
     if (client_socket != -1)
         close(client_socket);

@@ -8,7 +8,7 @@ oe_result_t verify_claim_value(const oe_claim_t* claim)
     printf(TLS_ENCLAVE "\nverify unique_id:\n");
     for (size_t i = 0; i < claim->value_size; i++)
     {
-        printf("0x%0x ", (uint8_t)claim->value[i]);
+        printf("0x%x ", (uint8_t)claim->value[i]);
         if (SERVER_ENCLAVE_MRENCLAVE[i] != (uint8_t)claim->value[i])
         {
             printf(

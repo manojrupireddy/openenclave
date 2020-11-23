@@ -247,18 +247,17 @@ int main(int argc, char** argv)
         goto done;
     }
 
-    if ((ctx = SSL_CTX_new(SSLv23_client_method())) == nullptr)
+    if ((ctx = SSL_CTX_new(TLS_client_method())) == nullptr)
     {
         printf(TLS_CLIENT "TLS client: unable to create a new SSL context\n");
         goto done;
     }
 
-    // choose TLSv1.2 by excluding SSLv2, SSLv3 ,TLS 1.0 and TLS 1.1
+    // Exclude SSLv2, SSLv3, TLS 1.0 and TLS 1.1
     SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
     SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
     SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
     SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_1);
-
     // specify the verify_callback for custom verification
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, &verify_callback);
 
