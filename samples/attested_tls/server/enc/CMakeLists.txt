@@ -28,8 +28,12 @@ add_custom_command(
 if (${OE_CRYPTO_LIB} MATCHES "openssl")
   add_executable(
     tls_server_enc
-    ecalls.cpp openssl_server.cpp cert_verify_config.cpp
-    ../../common/utility.cpp ../../common/openssl_utility.cpp
+    ecalls.cpp
+    openssl_server.cpp
+    cert_verify_config.cpp
+    ../../common/verify_callback.cpp
+    ../../common/utility.cpp
+    ../../common/openssl_utility.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/tls_server_t.c)
 elseif (${OE_CRYPTO_LIB} MATCHES "mbedtls")
   add_executable(
