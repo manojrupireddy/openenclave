@@ -253,14 +253,6 @@ int verify_callback(int preverify_ok, X509_STORE_CTX* ctx)
         (int)(buff - der),
         der_len);
 
-#if 0 // for debugging purpose
-    {
-        // output the whole cer in DER format
-        FILE* file = fopen("./cert.der", "wb");
-        fwrite(der, 1, der_len, file);
-        fclose(file);
-    }
-#endif
     printf(" verifying certificate start \n");
     // verify tls certificate
     oe_verifier_initialize();
@@ -271,7 +263,7 @@ int verify_callback(int preverify_ok, X509_STORE_CTX* ctx)
         printf(TLS_CLIENT "result=%s\n", oe_result_str(result));
         goto done;
     }
-    printf(" verifying certificate end \n");
+    printf(" verifying certificate end\n");
     ret = 1;
 done:
 

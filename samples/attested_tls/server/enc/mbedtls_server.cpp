@@ -20,7 +20,7 @@
 
 extern "C"
 {
-    int setup_tls_server(char* server_port, bool keep_server_up);
+    int set_up_tls_server(char* server_port, bool keep_server_up);
 };
 
 #define MAX_ERROR_BUFF_SIZE 256
@@ -217,7 +217,7 @@ waiting_for_connection_request:
         printf(TLS_SERVER "%d bytes received from client:\n", len);
 
         // For testing purpose, valdiate received data's content and size
-#ifdef ADD_TEST_CHECKING
+
         if (((size_t)len != CLIENT_PAYLOAD_SIZE) ||
             (memcmp(CLIENT_PAYLOAD, buf, (size_t)len) != 0))
         {
@@ -231,7 +231,7 @@ waiting_for_connection_request:
         }
         printf(TLS_SERVER
                "Verified: the contents of client payload were expected\n\n");
-#endif
+
         if ((size_t)ret == CLIENT_PAYLOAD_SIZE)
             break;
     } while (1);
@@ -281,7 +281,7 @@ done:
     return ret;
 }
 
-int setup_tls_server(char* server_port, bool keep_server_up)
+int set_up_tls_server(char* server_port, bool keep_server_up)
 {
     int ret = 0;
     oe_result_t result = OE_FAILURE;
@@ -298,7 +298,7 @@ int setup_tls_server(char* server_port, bool keep_server_up)
     /* Load host resolver and socket interface modules explicitly*/
     if (load_oe_modules() != OE_OK)
     {
-        printf(TLS_SERVER "loading required oe modules failed \n");
+        printf(TLS_SERVER "loading required Open Enclave modules failed \n");
         goto exit;
     }
 

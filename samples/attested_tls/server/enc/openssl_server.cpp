@@ -13,7 +13,7 @@
 
 extern "C"
 {
-    int setup_tls_server(char* server_port, bool keep_server_up);
+    int set_up_tls_server(char* server_port, bool keep_server_up);
 };
 
 int verify_callback(int preverify_ok, X509_STORE_CTX* ctx);
@@ -21,17 +21,17 @@ int verify_callback(int preverify_ok, X509_STORE_CTX* ctx);
 int initalize_ssl_context(SSL_CTX*& ctx)
 {
     int ret = -1;
-    const SSL_METHOD* method;
-    if ((ctx = SSL_CTX_new(SSLv23_server_method())) == NULL)
+    if ((ctx = SSL_CTX_new(TLS_server_method())) == NULL)
     {
         printf(TLS_SERVER " unable to create a new SSL context\n");
         goto exit;
     }
-    // choose TLSv1.2 by excluding SSLv2, SSLv3 ,TLS 1.0 and TLS 1.1
+    // Exclude SSLv2, SSLv3, TLS 1.0, TLS 1.1 and TLS 1.2
     SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
     SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
     SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
     SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_1);
+    SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_2);
     ret = 0;
 exit:
     return ret;
@@ -136,14 +136,14 @@ exit:
     return ret;
 }
 
-int setup_tls_server(char* server_port, bool keep_server_up)
+int set_up_tls_server(char* server_port, bool keep_server_up)
 {
     int ret = 0;
     int server_socket_fd;
     int client_socket_fd;
-    int server_port_num;
+    int server_port_number;
 
-    X509* cert = NULL;
+    X509* certificate = NULL;
     EVP_PKEY* pkey = NULL;
 
     SSL_CTX* ssl_server_ctx = NULL;
@@ -152,7 +152,7 @@ int setup_tls_server(char* server_port, bool keep_server_up)
     /* Load host resolver and socket interface modules explicitly*/
     if (load_oe_modules() != OE_OK)
     {
-        printf(TLS_SERVER "loading required oe modules failed \n");
+        printf(TLS_SERVER "loading required Open Enclave modules failed \n");
         goto exit;
     }
 
@@ -164,15 +164,15 @@ int setup_tls_server(char* server_port, bool keep_server_up)
 
     SSL_CTX_set_verify(ssl_server_ctx, SSL_VERIFY_PEER, &verify_callback);
 
-    if (load_ssl_certificates_and_keys(ssl_server_ctx, cert, pkey) != 0)
+    if (load_tls_certificates_and_keys(ssl_server_ctx, certificate, pkey) != 0)
     {
         printf(TLS_SERVER
                " unable to load certificate and private key on the server\n ");
         goto exit;
     }
 
-    sscanf(server_port, "%d", &server_port_num); // conver to char* to int
-    if (create_listener_socket(server_port_num, server_socket_fd) != 0)
+    sscanf(server_port, "%d", &server_port_number); // conver to char* to int
+    if (create_listener_socket(server_port_number, server_socket_fd) != 0)
     {
         printf(TLS_SERVER " unable to create listener socket on the server\n ");
         goto exit;
@@ -202,8 +202,8 @@ exit:
     }
     if (ssl_server_ctx)
         SSL_CTX_free(ssl_server_ctx);
-    if (cert)
-        X509_free(cert);
+    if (certificate)
+        X509_free(certificate);
     if (pkey)
         EVP_PKEY_free(pkey);
     return (ret);
