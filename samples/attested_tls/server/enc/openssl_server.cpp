@@ -18,25 +18,6 @@ extern "C"
 
 int verify_callback(int preverify_ok, X509_STORE_CTX* ctx);
 
-int initalize_ssl_context(SSL_CTX*& ctx)
-{
-    int ret = -1;
-    if ((ctx = SSL_CTX_new(TLS_server_method())) == NULL)
-    {
-        printf(TLS_SERVER " unable to create a new SSL context\n");
-        goto exit;
-    }
-    // Exclude SSLv2, SSLv3, TLS 1.0, TLS 1.1 and TLS 1.2
-    SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
-    SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
-    SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
-    SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_1);
-    SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_2);
-    ret = 0;
-exit:
-    return ret;
-}
-
 int create_listener_socket(int port, int& server_socket)
 {
     int ret = -1;
@@ -148,6 +129,7 @@ int set_up_tls_server(char* server_port, bool keep_server_up)
 
     SSL_CTX* ssl_server_ctx = NULL;
     SSL* ssl_session = NULL;
+    SSL_CONF_CTX *ssl_confctx = SSL_CONF_CTX_new();
 
     /* Load host resolver and socket interface modules explicitly*/
     if (load_oe_modules() != OE_OK)
@@ -156,7 +138,13 @@ int set_up_tls_server(char* server_port, bool keep_server_up)
         goto exit;
     }
 
-    if (initalize_ssl_context(ssl_server_ctx) != 0)
+    if ((ssl_server_ctx = SSL_CTX_new(TLS_server_method())) == NULL)
+    {
+        printf(TLS_SERVER " unable to create a new SSL context\n");
+        goto exit;
+    }
+
+    if (initalize_ssl_context(ssl_confctx, ssl_server_ctx) != OE_OK)
     {
         printf(TLS_SERVER " unable to create a new SSL context\n ");
         goto exit;
@@ -202,6 +190,8 @@ exit:
     }
     if (ssl_server_ctx)
         SSL_CTX_free(ssl_server_ctx);
+    if (ssl_confctx)
+        SSL_CONF_CTX_free(ssl_confctx);
     if (certificate)
         X509_free(certificate);
     if (pkey)

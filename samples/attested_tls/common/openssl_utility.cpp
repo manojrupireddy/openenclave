@@ -115,6 +115,57 @@ exit:
     return result;
 }
 
+oe_result_t initalize_ssl_context(SSL_CONF_CTX*& ssl_conf_ctx, SSL_CTX*& ctx)
+{
+    oe_result_t ret = OE_FAILURE;
+    const char* cipher_list_tlsv12_below =
+        "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-"
+        "AES128-GCM-SHA256:"
+        "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-ECDSA-"
+        "AES256-SHA384:"
+        "ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384";
+    const char* cipher_list_tlsv13 =
+        "TLS13-AES-256-GCM-SHA384:TLS13-AES-128-GCM-SHA256";
+    const char* supported_curves = "P-521:P-384:P-256";
+
+    SSL_CONF_CTX_set_ssl_ctx(ssl_conf_ctx, ctx);
+    SSL_CONF_CTX_set_flags(ssl_conf_ctx, SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_SERVER | SSL_CONF_FLAG_CLIENT);
+    int ssl_conf_return_value = -1;
+    if( (ssl_conf_return_value  = SSL_CONF_cmd(ssl_conf_ctx, "MinProtocol", "TLSv1.2")) < 0)
+    {
+        printf("Setting MinProtocol for ssl context configuration failed with error %d \n", ssl_conf_return_value);
+        goto exit;
+    }
+    if((ssl_conf_return_value  = SSL_CONF_cmd(ssl_conf_ctx, "MaxProtocol", "TLSv1.3")) < 0)
+    {
+        printf("Setting MaxProtocol for ssl context configuration failed with error %d \n", ssl_conf_return_value);
+        goto exit;
+    }
+    if((ssl_conf_return_value  = SSL_CONF_cmd(ssl_conf_ctx, "CipherString", cipher_list_tlsv12_below)) < 0)
+    {
+        printf("Setting CipherString for ssl context configuration failed with error %d \n", ssl_conf_return_value);
+        goto exit;
+    }
+    if((ssl_conf_return_value  = SSL_CONF_cmd(ssl_conf_ctx, "Ciphersuites", cipher_list_tlsv13)) < 0)
+    {
+        printf("Setting Ciphersuites for ssl context configuration failed with error %d \n", ssl_conf_return_value);
+        goto exit;
+    }
+    if((ssl_conf_return_value  = SSL_CONF_cmd(ssl_conf_ctx, "Curves", supported_curves)) < 0)
+    {
+        printf("Setting Curves for ssl context configuration failed with error %d \n", ssl_conf_return_value);
+        goto exit;
+    }
+    if (!SSL_CONF_CTX_finish(ssl_conf_ctx))
+    {
+        printf("Error finishing ssl context configuration \n");
+        goto exit;
+    }
+    ret = OE_OK;
+exit:
+    return ret;
+}
+
 int read_from_session_peer(
     SSL*& ssl_session,
     const char* payload,
