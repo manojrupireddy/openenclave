@@ -174,25 +174,6 @@ done:
     return sockfd;
 }
 
-int initalize_ssl_context(SSL_CTX*& ctx)
-{
-    int ret = -1;
-    if ((ctx = SSL_CTX_new(TLS_client_method())) == nullptr)
-    {
-        printf(TLS_CLIENT "TLS client: unable to create a new SSL context\n");
-        goto exit;
-    }
-    // Exclude SSLv2, SSLv3, TLS 1.0, TLS 1.1 and TLS 1.2
-    SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
-    SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
-    SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
-    SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_1);
-    SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_2);
-    ret = 0;
-exit:
-    return ret;
-}
-
 int launch_tls_client(char* server_name, char* server_port)
 {
     printf(TLS_CLIENT " called launch tls client\n");
@@ -204,6 +185,7 @@ int launch_tls_client(char* server_name, char* server_port)
 
     X509* cert = nullptr;
     EVP_PKEY* pkey = nullptr;
+    SSL_CONF_CTX* ssl_confctx = SSL_CONF_CTX_new();
 
     int client_socket = -1;
     int error = 0;
@@ -218,9 +200,15 @@ int launch_tls_client(char* server_name, char* server_port)
 
     printf("\nStarting" TLS_CLIENT "\n\n\n");
 
-    if (initalize_ssl_context(ssl_client_ctx) != 0)
+    if ((ssl_client_ctx = SSL_CTX_new(TLS_client_method())) == nullptr)
     {
-        printf(TLS_CLIENT " unable to create a new SSL context\n ");
+        printf(TLS_CLIENT "unable to create a new SSL context\n");
+        goto done;
+    }
+
+    if (initalize_ssl_context(ssl_confctx, ssl_client_ctx) != OE_OK)
+    {
+        printf(TLS_CLIENT "unable to create a initialize SSL context\n ");
         goto done;
     }
 
@@ -299,6 +287,9 @@ done:
 
     if (ssl_client_ctx)
         SSL_CTX_free(ssl_client_ctx);
+
+    if (ssl_confctx)
+        SSL_CONF_CTX_free(ssl_confctx);
 
     printf(TLS_CLIENT " %s\n", (ret == 0) ? "success" : "failed");
     return (ret);
