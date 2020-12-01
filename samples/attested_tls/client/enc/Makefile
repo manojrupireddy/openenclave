@@ -29,7 +29,7 @@ build:
 		--search-path $(INCDIR) \
 		--search-path $(INCDIR)/openenclave/edl/sgx
 
-	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -I.  -std=c++11 $(SRC_FILES)
+	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -I. -std=c++11 $(SRC_FILES)
 	$(CC) -c $(CFLAGS) $(CINCLUDES) -I. ./tls_client_t.c
 	$(CXX) -o tls_client_enclave $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver
 

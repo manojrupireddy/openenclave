@@ -253,7 +253,7 @@ int main(int argc, char** argv)
         goto done;
     }
 
-    // Exclude SSLv2, SSLv3, TLS 1.0 and TLS 1.1
+    // choose TLSv1.2 by excluding SSLv2, SSLv3 ,TLS 1.0 and TLS 1.1
     SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
     SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
     SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
