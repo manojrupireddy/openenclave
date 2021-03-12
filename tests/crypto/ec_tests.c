@@ -50,7 +50,7 @@ static uint8_t y_data[max_coordinates_size];
 
 size_t private_key_size;
 size_t public_key_size;
-size_t sign_size;
+size_t cert_sign_size;
 size_t x_size, y_size;
 
 static const uint8_t _P256_GROUP_ORDER[] = {
@@ -125,7 +125,7 @@ static void _test_sign_and_verify()
             &ALPHABET_HASH,
             sizeof(ALPHABET_HASH),
             _SIGNATURE,
-            sign_size);
+            cert_sign_size);
         OE_TEST(r == OE_OK);
 
         oe_ec_public_key_free(&key);
@@ -957,7 +957,7 @@ void TestEC()
             sizeof(_PUBLIC_KEY),
             &public_key_size) == OE_OK);
     OE_TEST(
-        read_sign("../data/test_ec_signature", _SIGNATURE, &sign_size) ==
+        read_sign("../data/test_ec_signature", _SIGNATURE, &cert_sign_size) ==
         OE_OK);
     OE_TEST(
         read_coordinates(

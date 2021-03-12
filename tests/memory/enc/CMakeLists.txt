@@ -28,5 +28,7 @@ if (WIN32)
   enclave_compile_definitions(memory_enc PRIVATE NO_PAGING_SUPPORT)
 endif ()
 
+enclave_compile_options(memory_enc PRIVATE -Wno-implicit-int-float-conversion)
+
 enclave_include_directories(memory_enc PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 enclave_link_libraries(memory_enc oelibc oecore)

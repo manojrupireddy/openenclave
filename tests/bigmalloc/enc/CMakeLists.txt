@@ -23,5 +23,8 @@ add_enclave(
   enc.c
   ${CMAKE_CURRENT_BINARY_DIR}/bigmalloc_t.c)
 
+enclave_compile_options(bigmalloc_enc PRIVATE
+                        -Wno-implicit-int-float-conversion)
+
 enclave_include_directories(bigmalloc_enc PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 enclave_link_libraries(bigmalloc_enc oelibc)
