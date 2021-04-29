@@ -10,9 +10,17 @@ add_custom_command(
     edger8r --untrusted ${EDL_FILE} --search-path ${PROJECT_SOURCE_DIR}/include
     ${DEFINE_OE_SGX} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(config_id_host host.cpp config_id_u.c)
+add_executable(config_id_host host.c config_id_u.c)
 
 target_include_directories(config_id_host PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                                   ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(config_id_host oehost)
+
+add_executable(config_id_kss_host host_kss.c config_id_u.c)
+
+target_include_directories(
+  config_id_kss_host PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+                             ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(config_id_kss_host oehost)

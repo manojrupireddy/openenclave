@@ -16,8 +16,21 @@ add_enclave(
   UUID
   25419627-14f6-4625-9329-cf5f10a57fea
   SOURCES
-  enc.cpp
+  enc.c
   ${CMAKE_CURRENT_BINARY_DIR}/config_id_t.c)
 
 enclave_include_directories(config_id_enc PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                             ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_enclave(
+  TARGET
+  config_id_kss_enc
+  UUID
+  25419627-14f6-4625-9329-cf5f10a57feb
+  SOURCES
+  enc_kss.c
+  ${CMAKE_CURRENT_BINARY_DIR}/config_id_t.c)
+
+enclave_include_directories(
+  config_id_kss_enc PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR})

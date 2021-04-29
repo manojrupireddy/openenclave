@@ -8,3 +8,4 @@ if (BUILD_ENCLAVES)
 endif ()
 
 add_enclave_test(tests/config_id config_id_host config_id_enc)
+add_enclave_test(tests/config_id_kss config_id_kss_host config_id_kss_enc)

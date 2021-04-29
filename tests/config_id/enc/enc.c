@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "config_id_t.h"
 
-int enclave_test_config_id()
+oe_result_t enclave_test_config_id()
 {
     fprintf(stdout, "enclave_config_id_test_kss_properties invoked\n");
     /*
