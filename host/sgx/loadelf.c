@@ -224,9 +224,10 @@ static oe_result_t _initialize_image_segments(
             case PT_LOAD:
                 if (lo > ph->p_vaddr)
                     lo = ph->p_vaddr;
-
-                if (hi < ph->p_vaddr + ph->p_memsz)
-                    hi = ph->p_vaddr + ph->p_memsz;
+                uint64_t temp_hi = hi;
+                OE_CHECK(oe_safe_add_u64(ph->p_vaddr, ph->p_memsz, &temp_hi));
+                if (hi < temp_hi)
+                    hi = temp_hi;
 
                 image->num_segments++;
                 break;
@@ -310,7 +311,7 @@ static oe_result_t _stage_image_segments(
                 segment->memsz = ph->p_memsz;
                 segment->vaddr = ph->p_vaddr;
                 segment->flags = ph->p_flags;
-
+                uint64_t segment_start_address = 0;
                 void* segment_data = elf64_get_segment(&image->elf, i);
                 if (!segment_data)
                 {
@@ -319,10 +320,11 @@ static oe_result_t _stage_image_segments(
                         "Failed to get segment at index %lu",
                         i);
                 }
-
+                OE_CHECK(segment->vaddr > image->image_size);
+                OE_CHECK(oe_safe_add_u64((uint64_t)image->image_base, segment->vaddr, &segment_start_address));
                 /* Copy the segment data to the image buffer */
                 memcpy(
-                    image->image_base + segment->vaddr,
+                    segment_start_address,
                     segment_data,
                     ph->p_filesz);
                 pt_read_segments_index++;
@@ -720,7 +722,9 @@ static oe_result_t _set_uint64_t_dynamic_symbol_value(
     if (elf64_find_dynamic_symbol_by_name(&image->elf, name, &sym) != 0)
         goto done;
 
-    symbol_address = (uint64_t*)(image->image_base + sym.st_value);
+    OE_CHECK(sym.st_value > image->image_size);
+    OE_CHECK(oe_safe_add_u64(
+        (uint64_t)image->image_base, sym.st_value, (uint64_t*)&symbol_address));
     *symbol_address = value;
 
     result = OE_OK;
